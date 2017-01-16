@@ -1,0 +1,409 @@
+#--------------------------------------------------------------------------
+# Cmake -- standard Makefile configuration for AsiaInfo programs
+# Copyright (c) 2002, Asiainfo Technologies (China), Inc.
+# All right reserved.
+#
+# History: 	
+# 1:	2002.10.29	create
+#--------------------------------------------------------------------------
+ 
+#--------------------------------------------------------------------------
+# Macro maybe usable
+#--------------------------------------------------------------------------
+#include $(ORACLE_HOME)/rdbms/lib/env_rdbms.mk
+
+INCPATHS =
+LDPATHS =
+
+#--------------------------------------------------------------------------
+# Macro for ACE
+#--------------------------------------------------------------------------
+#ACE_ROOT=/opt/ACE_wrappers
+ifdef ACE_HOME
+ACE_ROOT=$(ACE_HOME)
+endif
+
+#--------------------------------------------------------------------------
+# Macro for LUA
+#--------------------------------------------------------------------------
+ifdef LUA_HOME
+LUA_PATH=$(LUA_HOME)
+LUAINC=-I$(LUA_HOME)/include
+LUALIB=$(LUA_HOME)/lib/liblua.a
+else
+LUA_PATH=
+LUAINC=
+LUALIB=liblua.a
+endif
+
+TUXLIB=$(TUXDIR)/lib -ltux
+
+#--------------------------------------------------------------------------
+# Macro Using for Cmake & Makefile
+#--------------------------------------------------------------------------
+CCFLAGS =
+CXXFLAGS =
+INCFLAGS =
+PICFLAGS =
+LDFLAGS =
+LDOPTS =
+SHLDFLAGS =
+DMFLAGS =
+THRFLAGS =
+THRDEFS =
+OSDEF =
+DEFS =
+OPTS =
+SYSOPT =
+SYSLIB =
+SHOPT =
+CC =
+CXX =
+THREDLIB =
+ICONVLIB = -liconv
+
+BUILDTYPE =
+PRODDBTYPE =
+DEFINECORBA =
+
+BSS_LOCAL =
+
+ifeq "$(AIOSS_LOCALE)" "HN"
+BSS_LOCAL = -DBSS_HUNAN
+endif
+
+ifeq "$(AIOSS_LOCALE)" "SH"
+BSS_LOCAL = -DBSS_SHANGHAI
+endif
+
+ifeq "$(AIOSS_LOCALE)" "ZJ"
+BSS_LOCAL = -DBSS_ZHEJIANG
+endif
+
+
+
+ifeq "$(NOTHREAD)" "1"
+THREADLIB=
+else
+THREADLIB=-lpthread
+endif
+
+
+OS=$(shell uname)
+
+
+ifeq "$(OS)" "SunOS"
+	CC = CC
+	CXX = $(CC)
+	SHOPT = -G 
+	SYSLIB = -mt $(DYNAMIC) -staticlib=Crun -lsocket -lnsl -lw -ldl  -lm -lresolv \
+	-lposix4 $(THREADLIB)
+	SYSOPT = -mt -DWORDS_BIGENDIAN
+	OSDEF = -DSOLARIS
+endif
+
+
+ifeq "$(OS)" "OSF1"
+	CC= cxx
+	CXX= $(CC)
+	SHOPT = -shared
+	SYSLIB = $(DYNAMIC) -lm $(THREADLIB) -lrt
+	SYSOPT = -DWORDS_BIGENDIAN
+	OSDEF = -DDIGITAL
+endif
+
+
+ifeq "$(OS)" "HP-UX"
+	CC= aCC -AA
+	CXX= $(CC)
+	SHOPT = -b 
+	SYSLIB = $(DYNAMIC) -mt -lstd_v2 -lCsup -lcl -lnsl -lc -lm -lpthread -ldl -Wl,+s -z
+	SYSOPT = +Z -D_REENTRANT -Wl,-E,+s -D_INCLUDE_LONGLONG -mt \
+	-D__HPACC_THREAD_SAFE_RB_TREE -DRWSTD_MULTI_THREAD -D_THREAD_SAFE -DWORDS_BIGENDIAN
+	OSDEF = -DHPUX
+endif
+
+
+ifeq "$(OS)" "AIX"
+	CC= xlC_r
+	CXX= $(CC)
+	SHOPT = -G -bM:SRE -bnoentry -qmkshrobj -qtempinc -qlonglong 		  \
+	-bdynamic -berok 
+	SYSLIB = $(THREADLIB) -bnoipath -bexpall -brtl -qrtti=dynamiccast
+	SYSOPT = -qlonglong  -DWORDS_BIGENDIAN -qmaxmem=-1 -qrtti=dynamiccast
+	OSDEF = -DIBMVACPP $(BSS_LOCAL)
+	EXP = nm -B -BCpg $^ | awk '{ if ((($$2 == "T") || ($$2 == "D") || ($$2 == "B")) && (substr($$3,1,1) != ".")) { print $$3 } }' | sort -u > a.exp
+        LD = $(EXP); xlC_r -bE:a.exp -bh:5
+endif
+
+
+#ifeq "$(OS)" "LINUX"
+ifeq "$(OS)" "Linux"
+	CC= gcc -g
+	CXX= g++ -g
+	SHOPT = -shared
+	SYSLIB = $(DYNAMIC) -lm $(THREADLIB)
+#	SYSOPT = -DWORDS_BIGENDIAN HAVE_STD_IOSTREAM  
+	SYSOPT = -DHAVE_STD_IOSTREAM  
+	OSDEF = -DLINUX -DGCC -fpic $(BSS_LOCAL)
+	LD = g++ -g
+	ICONVLIB = 
+endif
+
+
+ifeq "$(GCC)" "1"
+	CC= g++ 
+	CXX= $(CC)
+ifeq "$(OS)" "AIX"
+	SHOPT = -shared -Wl,-brtl
+	SYSLIB = $(DYNAMIC) -lm $(THREADLIB) -Wl,-brtl
+else
+	SHOPT = -shared
+endif
+	SYSOPT = -DWORDS_BIGENDIAN -DGCC -fPIC 
+endif
+
+
+ifeq "$(DEBUG)" "1"
+ifeq "$(OS)" "HP-UX"
+	DEBUGFLAG = -g0
+else
+	DEBUGFLAG = -g
+endif
+	DBGOPTS= -DDEBUG=1 
+else
+	DEBUGFLAG =
+	DBGOPTS =
+endif
+
+
+ifeq "$(PURIFY)" "1"
+	CC := purify $(PURIFYOPTS) $(CC)
+	CXX := purify $(PURIFYOPTS) $(CXX)
+endif
+
+ifeq "$(QUANTIFY)" "1"
+	CC := quantify $(QUANTIFYOPTS) $(CC)
+	CXX := quantify $(QUANTIFYOPTS) $(CXX)
+endif
+
+
+ifeq "$(ORA)" "1"
+    PRODDBTYPE = -DDB_TYPE_ORA -DORA_TYPE_8I
+endif
+
+ifeq "$(ORA8)" "1"
+    PRODDBTYPE = -DDB_TYPE_ORA -DORA_TYPE_8
+endif
+
+ifeq "$(ORA9)" "1"
+    PRODDBTYPE = -DDB_TYPE_ORA -DORA_TYPE_9I
+endif
+
+ifeq "$(ORA10)" "1"
+    PRODDBTYPE = -DDB_TYPE_ORA -DORA_TYPE_10G
+endif
+
+ifeq "$(SYB)" "1"
+	PRODDBTYPE = -DDB_TYPE_SYB
+endif
+
+ifeq "$(CORBA)" "1"
+	DEFINECORBA = -DVBROKER
+endif
+
+#--------------------------------------------------------------------------
+# Macro for BUILDTYPE
+#--------------------------------------------------------------------------
+ifeq "$(DEBUG)" "1"
+	BUILDTYPE=D
+else
+	BUILDTYPE=
+endif
+
+ifeq "$(OS)" "HP-UX"
+	LIBEXT=sl
+else
+#ifeq "$(OS)" "AIX"
+#ifeq "$(GCC)" "1"
+#	LIBEXT=a
+#else
+#	LIBEXT=so
+#endif
+#else
+	LIBEXT=so
+#endif
+endif
+
+BUILDTAIL=$(BUILDTYPE).$(LIBEXT)
+
+ifeq "$(ORA)" "1"
+	DBBUILDTYPE=ora$(BUILDTYPE)
+	DBBUILDTAIL=ora$(BUILDTAIL)
+endif
+
+ifeq "$(ORA9)" "1"
+	DBBUILDTYPE=ora$(BUILDTYPE)
+	DBBUILDTAIL=ora$(BUILDTAIL)
+endif
+
+ifeq "$(ORA10)" "1"
+	DBBUILDTYPE=ora$(BUILDTYPE)
+	DBBUILDTAIL=ora$(BUILDTAIL)
+endif
+
+ifeq "$(SYB)" "1"
+	DBBUILDTYPE=syb$(BUILDTYPE)
+	DBBUILDTAIL=syb$(BUILDTAIL)
+endif
+
+#--------------------------------------------------------------------------
+# Macro for user
+#--------------------------------------------------------------------------
+PRODLIBS =
+PRODINCL =
+PRODFLAGS =
+DEFS =
+
+#--------------------------------------------------------------------------
+# Macro for Oracle
+#--------------------------------------------------------------------------
+ifeq "$(ORA)" "1"
+ORALIB=-L$(ORACLE_HOME)/lib -lclntsh -lclient8
+ORAINC=-I$(ORACLE_HOME)/rdbms/demo -I$(ORACLE_HOME)/rdbms/public 		  \
+	-I$(ORACLE_HOME)/plsql/public -I$(ORACLE_HOME)/network/public
+else
+ifeq "$(ORA9)" "1"
+ORALIB=-L$(ORACLE_HOME)/lib32 -L$(ORACLE_HOME)/lib -lclntsh -lclient9
+ORAINC=-I$(ORACLE_HOME)/rdbms/demo -I$(ORACLE_HOME)/rdbms/public          \
+    -I$(ORACLE_HOME)/plsql/public -I$(ORACLE_HOME)/network/public
+else
+ifeq "$(ORA10)" "1"
+ORALIB=-L$(ORACLE_HOME)/lib32 -L$(ORACLE_HOME)/lib -lclntsh -lclient10
+ORAINC=-I$(ORACLE_HOME)/rdbms/demo -I$(ORACLE_HOME)/rdbms/public          \
+    -I$(ORACLE_HOME)/plsql/public -I$(ORACLE_HOME)/network/public
+else
+ifeq "$(ORA11)" "1" 
+ORALIB=-L$(ORACLE_HOME)/lib -lclntsh -lclient11
+ORAINC=-I$(ORACLE_HOME)/rdbms/demo -I$(ORACLE_HOME)/rdbms/public          \
+    -I$(ORACLE_HOME)/plsql/public -I$(ORACLE_HOME)/network/public
+else
+ORAINC=
+ORALIB=
+endif
+endif
+endif
+endif
+
+#--------------------------------------------------------------------------
+# Macro for Sybase
+#--------------------------------------------------------------------------
+ifeq "$(SYB)" "1"
+SYBINC=-I$(SYBASE)/$(SYBASE_OCS)/include
+ifdef NOTHREAD
+SYBLIB= -L$(SYBASE)/$(SYBASE_OCS)/lib -lblk -lct -lcs -lintl -lcomn -ltcl
+else
+SYBLIB= -L$(SYBASE)/$(SYBASE_OCS)/lib -lblk_r -lct_r -lcs_r -lintl_r 	  \
+	-lcomn_r -ltcl_r
+endif
+SYBOTLLIB = -lotlsyb$(BUILDTYPE) $(SYBLIB)
+else
+SYBINC=
+SYBLIB=
+endif
+
+#--------------------------------------------------------------------------
+# Macro for TCL/TK
+#--------------------------------------------------------------------------
+ifeq "$(TCL)" "1"
+TCLLIB=-L$(TCL_HOME)/lib -ltcl$(TCL_VERSION)
+TCLINC=-I$(TCL_HOME)/include
+else
+TCLINC=
+TCLLIB=
+endif
+
+
+#--------------------------------------------------------------------------
+# Macro for VisiBroker
+#--------------------------------------------------------------------------
+ifeq "$(CORBA)" "1"
+ORBCC      = $(VBROKERDIR)/bin/idl2cpp
+VBLIBPATH  = -L$(VBROKERDIR)/lib
+LIBORB     = -lorb_r
+VBINCL	   = -I$(VBROKERDIR)/include
+else
+VBLIBPATH  =
+LIBORB 	   =
+VBINCL     =
+endif
+
+#--------------------------------------------------------------------------
+# if we want add some other universal flags, which are required for all
+# products in our company, we change the following two macros.
+# We change LDFLAGS when we want to change libraries and we change CPPFLAGS
+# when we want to add or remove some flags.
+#--------------------------------------------------------------------------
+CPPFLAGS  = -I. -I../include -I${ACE_ROOT} -I${ACE_ROOT}/include -I$(AIOSS_HOME)/include $(DEBUGFLAG) $(DBGOPTS) \
+		$(PIC) $(VBINCL) $(PRODINCL) $(PRODDBTYPE) $(PRODFLAGS)	 \
+		$(OSDEF) $(DEFS) $(DEFINECORBA) $(SYSOPT) $(INCS) -I$(TCL_HOME)/include \
+		-D__ACE_INLINE__
+LOADLIBES = -L. -L$(TUXDIR)/lib ${PRODLIBS} $(SYSLIB) \
+		$(DBGOPTS) $(PIC) $(PRODFLAGS) $(SYSOPT) -L$(TCL_HOME)/lib -ltcl
+
+
+#--------------------------------------------------------------------------
+# 1. All C or C++ compilers and linkers, we use the default definitions.
+# 2. And we use a lot built-in implicite rules and patter rules. Do not
+#    be panic when you do not notice that.
+#--------------------------------------------------------------------------
+.SUFFIXES: .cpp .cxx .CC .c .d
+.PHONY: all clean rebuild
+%.o: %.cpp
+	$(CXX) $(CPPFLAGS) $(PRODINCL) -c $< -o $@
+%.o: %.cxx
+	$(CXX) $(CPPFLAGS) $(PRODINCL) -c $< -o $@
+%.o: %.cc
+	$(CXX) $(CPPFLAGS) $(PRODINCL) -c $< -o $@
+%.o: %.CC
+	$(CXX) $(CPPFLAGS) $(PRODINCL) -c $< -o $@
+%.o: %.c
+	$(CC) $(CPPFLAGS) $(PRODINCL) -c $< -o $@
+
+# for error message
+%_msg.cpp: $(PRODMSGPATH)/%.ems
+	ems2cpp $< -I $(PRODMSGPATH)
+%_msg.h: $(PRODMSGPATH)/%.ems
+	ems2cpp $< -I $(PRODMSGPATH) -H
+
+all: $(PRODDEST)
+
+checkenv:
+	@echo Build for ${OS}
+	@echo
+	@echo Using C++ compiler $(CXX)
+	@echo
+	@echo Using C compiler $(CC)
+	@echo
+	@echo CPPFLAGS= $(CPPFLAGS)
+	@echo
+	@echo LOADLIBES= $(LOADLIBES)
+	@echo
+	@echo SYSLIB = $(SYSLIB)
+	@echo
+	@echo SYSOPT= $(SYSOPT)
+	@echo
+	@echo SHOPT= $(SHOPT)
+	@echo
+	@echo PIC= $(PIC)
+	@echo
+	@echo PRODFLAGS= $(PRODFLAGS)
+	@echo
+	@echo PRODINCL= $(PRODINCL)
+	@echo
+	@echo ORAINC = $(ORAINC)
+	@echo ORALIB = $(ORALIB)
+	@echo SYBINC = $(SYBINC)
+	@echo SYBLIB = $(SYBLIB)
+	@echo PRODDBTYPE = $(PRODDBTYPE)
+	@echo DEBUG = $(DEBUG)
