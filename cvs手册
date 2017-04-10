@@ -1,0 +1,89 @@
+CVS基本命令
+
+1.检出源代码操作(cvs checkout)
+
+	将项目工作库目录取到个人工作库:
+	cvs checkout dirname
+	cvs co dirname
+
+	将项目工作库中某个文件取到本地个人工作库:cvs checkout filename
+
+2.将文件同步到最新的版本(cvs update)
+	开发人员每天开始工作前,请将项目工作库中的最新版本代码文件取到个人工作库中,养成"先同步,后修改"的习惯.
+	更新单个文件:
+	cvs update file
+	cvs up file
+
+	根据修订号来更新文件
+	cvs update -r 1.1.2.4 test.txt
+
+	更新目录:
+	cvs update dir
+	cvs up dir
+	(不指定文件名,cvs将同步所有子目录下的文件)
+	注意:第一次导出文件以后,就不是通过cvs checkout来同步文件了,而是要进入刚才cvs checkout project_name导出的project_name目录下进行具体文件的版本同步(添加,修改,删除)操作.
+
+	直接更新目录到本地:
+	cvs update -d dir
+	cvs up -d dir
+
+3.文件提交(cvs commit)
+	确认文件修改写入CVS库:
+	cvs commit -m "msg" file
+	cvs ci -m "msg" file
+	若不加文件名称，则目前目录下所有档案及子目录全部存入.
+	建议每次文件提交只修改一个文件,以避免多个文件以同样注释commit到CVS库里了,每次确认提交时,请认真填写修改注释,以帮助其他开发人员了解修改的原因.
+
+4.添加(cvs add)
+	添加某个目录操作:cvs add dir
+	添加某个文件操作:cvs add file
+	然后确认添加文件并注释
+	cvs commit -m "write some comments here"
+	对于图片,Word文档等非纯文本的项目,需要使用cvs add -kb选项按2进制文件方式导入,否则可能出现文件被破坏的情况.
+	cvs add -kb readme.doc
+
+	cvs add dir 后目录实际上已经添加了，用cvs up -d dir 就可以在其他机器上更下来。只是wincvs及时选择create missing directory也不行(对应的命令是cvs update -P -d)，因为是空目录的缘故.如果目录内有文件提交，那么就可以更下来.
+5.删除文件(cvs rm)
+
+  	将某个文件物理删除操作:cvs remove -f file
+  	确认删除文件并注释cvs commit -m "why delete file"
+  	查看修改历史(cvs log)
+  	查看日志操作命令:
+    cvs log file
+    cvs log dir
+  	查看版本操作:
+  	cvs status -v file
+  	cvs st -v file
+  	查看当前文件不同版本的区别:
+    cvs diff file
+    cvs diff -c file 查看对照的输出
+
+6.删除目录
+
+	删除目录和删除文件概念上有些类似—用户既希望一个目录在当前工作目录中不存在， 同时又希望在存在过的目录中取出老版本。
+
+	删除目录的方法就是删除目录下的所有文件。用户不能直接删除目录本身；目前 cvs 中也没有方法可以办到这一点。可以在 cvs update 或 cvs checkout 命令 中使用 `-P' 选项来让 cvs 删除工作目录中的空目录 (注意 cvs export 命令总是删除空目录的)。（注意 cvs export 命令总是删除空目录的。）可能最好 的办法就是每次在上面的命令中指定 `-P' 选项；如果用户希望在工作目录中保留 一个空目录，在该目录中随便放一个文件 (例如放一个 .keepme)文件来防止它被带 `-P' 的命令删掉。
+
+	注意，checkout 命令的 `-r' 和 `-D' 选项隐含了 `-P' 选项。 这使 cvs 可以正确地创建目录，或者不考虑在该目录中是否有用户检出的某个版本的文件
+
+7.更名
+	cvs里没有cvs move或cvs rename两个命令.
+	可先移动老命名文件:cvs remove old_file_name
+	然后再增加新命名文件实现更名操作:cvs add new_file_name
+	例:将文件tt.c改名为test.c,具体操作如下
+		mv tt.c test.c
+		cvs remove -f tt.c
+		cvs commit -m "remove for rename" tt.c
+		cvs add test.c
+8.导出不带CVS目录的源代码文件
+	每个开发目录下,CVS都创建了一个CVS/目录.里面有文件用于记录当前目录和CVS库之间的对应信息.项目发布的时候一般不希望把文件目录还带着含有
+	CVS信息的CVS目录导出,这个一次性的导出过程使用cvs export命令,不过export只能针对一个TAG或者日期导出:
+	cvs export -r release1 project_name
+	cvs export -D 20021023 project_name
+	cvs export -D now project_name
+9.基线标识
+	多个文件各自版本号不一样,项目到一定阶段,可以给所有文件统一指定一个阶段里程碑版本号,方便以后按照这个阶段里程碑版本号导出项目,同时也是项目的多个分支开发的基.
+	确认版本基线cvs tag release_1_0
+	开始一个新的版本基线:
+		cvs commit -r 2 标记所有文件开始进入2.0的开发
+		cvs update -j release_1_0_patch_1

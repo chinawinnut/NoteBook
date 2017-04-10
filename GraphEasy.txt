@@ -1,0 +1,241 @@
+Graph::Easy是一个画出ascii图的软件
+
+目录
+0
+1
+2
+3
+4
+5
+
+
+0.[术语]
+node - 代表一个节点或者一个图的顶点
+edge - 连接两个节点的边（或者是连接节点自己）比如:[ Bonn ] -> [ Berlin ]
+group - 子图
+name - 一个节点，子图唯一的名字；边和图没有名字.
+label - 节点，子图或者边上面展示文本；对于节点来说，如果没有设置标签，那么会使用节点的名字.
+title - 当你在节点或者边上移动鼠标的时候，展示的文本.
+port - 一个节点上可以有边的起点和终点的点.
+cell - 布局面板上的单元（看起来像是checker-board)
+path - 连接两个节点的路径
+(edges) pieces - 每一个path可以由一个或者多个cell组成，每一个cell包含edges的一部分.
+Parser - 把文本描述解析成内部表示的解析器
+Layouter - 给一个图的边和节点布局的东东
+hinting - 给Layouter指示如何进行特定布局的提示
+A* - 一个通用的路径寻找算法
+
+1.[安装(ubuntu)]
+(1).安装perl,有就不用了.
+(2).安装cpan,这个是perl的软件包管理
+(3).安装 Graph::Easy.在命令行输入 cpan 进入cpan shell,然后输入 install Graph::Easy 即可
+
+2.[使用]
+(1).使用Graph::Easy DSL的语法描述图像,存为文本文件,比如 simple.txt
+(2).使用 graph-easy 命令处理这个文件: graph-easy simple.txt
+(3).生成Graphviz图片(as_graphviz是一个脚本)：
+perl ./Downloads/Graph-Easy-0.76/examples/as_graphviz simple.txt | dot -Tpng -o graph.png
+perl ./Downloads/Graph-Easy-0.76/examples/as_graphviz simple.txt | dot -Tsvg -o graph.svg
+(4) 生成dot文件
+perl ./Downloads/Graph-Easy-0.76/examples/as_graphviz simple.txt > graph.dot
+3.[实例]
+(1).新建文件， vi mvp.txt ; 输入以下代码:
+
+[ View ] {rows:3} - Parse calls to -> [ Presenter ] {flow: south; rows: 3} - Manipulates -> [ Model ]
+[ Presenter ] - Updates -> [ View ]
+
+(2).保存然后退出；命令行执行 graph-easy mvp.txt , 输入效果如下
+
+
+
++------+  Parse calls to   +--------------+
+|      | ----------------> |              |
+| View |                   |  Presenter   |
+|      |  Updates          |              |
+|      | <---------------- |              |
++------+                   +--------------+
+                             |
+                             | Manipulates
+                             v
+                           +--------------+
+                           |    Model     |
+                           +--------------+
+
+4.[语法]
+(1).注释
+用 # 表达；注意 # 之后，一定需要加空格；由于历史原因；Graph::Easy的颜色也使用了 # ，不加空格会解析失败
+
+##############################################################
+# 合法的注释
+
+##############################################################
+#有问题的注释
+(2)空格
+通常没有什么影响，多个空字符会合并成一个，换行的空字符会忽略；下面的表述是等价的
+
+[A]->[B][C]->[D]
+
+[ A ] -> [ B ]
+[ C ] -> [ D ]
+
+(3).节点(Node)
+用中括号括起来的就是节点，我们简单可以理解为一些形状；比如流程图里面的矩形，圆等
+[ Single node ]
+[ Node A ] --> [ Node B ]
+
+可以用逗号分割多个节点:
+[ A ], [ B ], [ C ] --> [ D ]
+上面的代码图像如下:
++---+     +---+     +---+
+| A | --> | D | <-- | C |
++---+     +---+     +---+
+            ^
+            |
+            |
+          +---+
+          | B |
+          +---+
+
+由于每一个节点都是唯一的，因此不可能让两个节点具有相同的名字；但是有时候需要在布局里面给两个节点展示相同的描述，可以使用label属性复写节点上的文本描述：
+[ Bonn ] { label: Berlin; } -> [ Berlin ]
+经渲染之后图像如下：
++--------+     +--------+
+| Berlin | --> | Berlin |
++--------+     +--------+
+
+(4).边(Edges)
+将节点连接起来的就是边；Graph::Easy 的DSL支持这几种风格的边:
+->              实线
+=>              双实线
+.>              点线
+~>              波浪线
+- >             虚线
+.->             点虚线
+..->            dot-dot-dash
+= >             double-dash
+
+可以给边加标签，如下
+[ client ] - request -> [ server ]
+结果如下:
+
+```asciidoc
++--------+  request   +--------+
+| client | ---------> | server |
++--------+            +--------+
+
+多个边
+许多图形包也支持多个边；一个多边图就是允许从一个节点有多个边出发到达同一个另外的节点。
+[ Rostock ] -> [ Wismut ]
+[ Rostock ] -> [ Wismut ]
+
+  +---------------+
+  |               v
++---------+     +--------+
+| Rostock | --> | Wismut |
++---------+     +--------+
+
+自循环
+对于状态机以及流程图来说，自循环非常有用；自循环指的就是一个边从一个节点出发然后回到这个节点本身
+[ Chemnitz ] -> [ Chemnitz ]
+
+  +------+
+  v      |
++----------+
+| Chemnitz |
++----------+
+
+边的一部分作为其他边的终点
+有时候你想把一个边指向另外一个边上面的文字描述；但是传统的边只能连接节点，Graph::Easy的节点有一个特性shape，这种类型的节点会和边无缝连接在一起，让人觉得你好像是真正指向了一个边：
+[ car ] { shape: edge; }
+
+[ Bonn ] -- train --> [ Berlin ] -- [ car ] --> [ Ulm ]
+
+[ rented ] --> [ car ]
+
+
++------+  train   +--------+      car           +-----+
+| Bonn | -------> | Berlin | -----------------> | Ulm |
++------+          +--------+                    +-----+
+                                   ^
+                                   |
+                                   |
+                                 +--------+
+                                 | rented |
+                                 +--------+
+
+无向边和双向边
+
+[ Hamm ] <--> [ Leverkusen ]
+[ Wismut ] -- [ Plauen ]
+
++--------+      +------------+
+|  Hamm  | <--> | Leverkusen |
++--------+      +------------+
++--------+      +------------+
+| Wismut | ---- |   Plauen   |
++--------+      +------------+
+
+5.[属性(Attributes)]
+可以给节点和边添加属性；比如标签，方向等；使用大括号 {} 表示，里面的内容类似css， attribute: value
+
+[ "Monitor Size" ] --> { label: 21"; } [ Big ] { label: "Huge";
+
+上面的DSL输入如下:
++----------------+  21"   +------+
+| "Monitor Size" | -----> | Huge |
++----------------+        +------+
+
+6.[分组(群或者子图)]
+子图（在Graph::Easy里面叫做组）允许你把一些节点放在一起：
+( Capitals: [ Bonn ], [ Berlin ] )
+
++ - - - - - - +
+' Capitals:   '
+'             '
+' +---------+ '
+' | Berlin  | '
+' +---------+ '
+' +---------+ '
+' |  Bonn   | '
+' +---------+ '
+'             '
++ - - - - - - +
+
+
+
+5.[参考]
+https://weishu.gitbooks.io/graph-easy-cn
+
+https://github.com/ironcamel/Graph-Easy/blob/master/INSTALL
+
+http://www.open-open.com/lib/view/open1451867581573.html
+
+http://search.cpan.org/~tels/Graph-Easy/lib/Graph/Easy.pm#Different_edge_styles
+
+https://zhuanlan.zhihu.com/p/19900327?columnSlug=prattle
+
+
+[FAQ]
+1.有没有GUI编辑器？
+
+没有，Sorry
+
+2.Graph::Easy使用什么拓展名？
+
+直接使用.txt
+
+3.在Windows下面如何安装？
+
+首先，你需要两样东西：
+Perl, 可以从[ActiveState][2]获取
+nmake, 查阅[获取和安装nmake][3]
+安装好perl和nmake之后，可以正常安装Graph::Easy:
+perl Makefile.PL
+nmake
+nmake test
+nmake install
+
+
+[模块]
+Graph::Reader::Dot
+Graph::Writer::Dot
