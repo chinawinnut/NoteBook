@@ -87,3 +87,11 @@ CVS基本命令
 	开始一个新的版本基线:
 		cvs commit -r 2 标记所有文件开始进入2.0的开发
 		cvs update -j release_1_0_patch_1
+10.查看文件提交历史
+cvs history -ca bmsCAU.cpp 可以看到文件 被谁提交过
+
+显示类似下面                                                              == <remote>
+M 2016-07-12 10:46 +0000 yangzy     1.1.2.822 bmsCAU.cpp                   products/shbss30/bms/newline                                                                                                                         == <remote>
+M 2013-08-06 10:23 +0000 zhangraobo 1.1.2.433 bmsCAU.cpp                   products/shbss30/bms/newline                                                                                                                         == <remote>
+M 2016-08-24 09:17 +0000 zhuyj      1.1.2.827 bmsCAU.cpp                   products/shbss30/bms/newline                                                                                                                         == <remote>
+M 2017-01-12 17:58 +0000 zhuyj      1.1.2.851 bmsCAU.cpp                   products/shbss30/bms/newline   
